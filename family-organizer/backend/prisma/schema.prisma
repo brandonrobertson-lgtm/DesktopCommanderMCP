@@ -1,0 +1,538 @@
+// Prisma Schema for Family Organizer
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USERS & AUTH ============
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?
+  name          String
+  avatar        String?
+  role          String    @default("member") // admin, member
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  budgets       Budget[]
+  transactions  Transaction[]
+  bills         Bill[]
+  todos         TodoList[]
+  todoItems     TodoItem[]
+  vehicles      Vehicle[]
+  homes         Home[]
+  appliances    Appliance[]
+  contacts      Contact[]
+  passwords     Password[]
+  documents     Document[]
+  receipts      Receipt[]
+  medications   Medication[]
+  medicationLogs MedicationLog[]
+  fridgeItems   FridgeItem[]
+  mealPlans     MealPlan[]
+  recipes       Recipe[]
+  calorieLogs   CalorieLog[]
+  notes         Note[]
+  chatMessages  ChatMessage[]
+  groceryLists  GroceryList[]
+  groceryItems  GroceryItem[]
+  emailAccounts EmailAccount[]
+  calendarAccounts CalendarAccount[]
+  calendarEvents CalendarEvent[]
+  
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@map("sessions")
+}
+
+// ============ BUDGET & FINANCE ============
+model Budget {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Float
+  spent     Float    @default(0)
+  category  String
+  period    String   @default("monthly") // monthly, weekly, yearly
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("budgets")
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  description String
+  category    String
+  type        String   // income, expense
+  date        DateTime @default(now())
+  receiptId   String?
+  receipt     Receipt? @relation(fields: [receiptId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("transactions")
+}
+
+model Bill {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Float
+  payee     String
+  dueDate   DateTime
+  isPaid    Boolean  @default(false)
+  paidDate  DateTime?
+  category  String
+  recurring Boolean  @default(false)
+  frequency String?  // monthly, weekly, yearly
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("bills")
+}
+
+// ============ TO-DO LISTS ============
+model TodoList {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?
+  icon      String?
+  items     TodoItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  @@map("todo_lists")
+}
+
+model TodoItem {
+  id          String    @id @default(uuid())
+  listId      String
+  list        TodoList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  priority    String    @default("medium") // low, medium, high
+  dueDate     DateTime?
+  assignedTo  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("todo_items")
+}
+
+// ============ GROCERY LISTS ============
+model GroceryList {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  items     GroceryItem[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  
+  @@map("grocery_lists")
+}
+
+model GroceryItem {
+  id        String       @id @default(uuid())
+  listId    String
+  list      GroceryList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  quantity  String?
+  category  String?
+  checked   Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  @@map("grocery_items")
+}
+
+// ============ VEHICLES ============
+model Vehicle {
+  id               String              @id @default(uuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  make             String
+  model            String
+  year             Int
+  vin              String?
+  licensePlate     String?
+  mileage          Int?
+  maintenanceRecords MaintenanceRecord[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  
+  @@map("vehicles")
+}
+
+model MaintenanceRecord {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type        String   // oil_change, tire_rotation, inspection, etc.
+  description String?
+  cost        Float?
+  date        DateTime @default(now())
+  mileage     Int?
+  vendor      String?
+  notes       String?
+  nextDue     DateTime?
+  nextMileage Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("maintenance_records")
+}
+
+// ============ HOME & APPLIANCES ============
+model Home {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  address    String
+  type       String?     // house, apartment, condo
+  appliances Appliance[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  
+  @@map("homes")
+}
+
+model Appliance {
+  id            String   @id @default(uuid())
+  homeId        String
+  home          Home     @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  type          String   // refrigerator, washer, dryer, etc.
+  brand         String?
+  model         String?
+  location      String?  // kitchen, laundry room, etc.
+  purchaseDate  DateTime?
+  warrantyUntil DateTime?
+  lastService   DateTime?
+  nextService   DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("appliances")
+}
+
+// ============ CONTACTS ============
+model Contact {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  category  String   // insurance, bank, medical, utility, emergency
+  phone     String?
+  email     String?
+  address   String?
+  website   String?
+  notes     String?
+  favorite  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("contacts")
+}
+
+// ============ PASSWORD MANAGER ============
+model Password {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  username    String?
+  password    String   // Encrypted
+  url         String?
+  category    String?
+  notes       String?
+  favorite    Boolean  @default(false)
+  lastUsed    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("passwords")
+}
+
+// ============ DOCUMENTS ============
+model Document {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  category  String   // legal, financial, medical, personal
+  fileUrl   String
+  fileSize  Int
+  fileType  String
+  encrypted Boolean  @default(false)
+  tags      String[]
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("documents")
+}
+
+// ============ RECEIPTS ============
+model Receipt {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor       String
+  amount       Float
+  date         DateTime      @default(now())
+  category     String?
+  imageUrl     String?
+  ocrText      String?
+  items        String[]
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  @@map("receipts")
+}
+
+// ============ MEDICATIONS ============
+model Medication {
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  dosage       String
+  frequency    String
+  forPerson    String
+  prescriber   String?
+  pharmacy     String?
+  refillDate   DateTime?
+  notes        String?
+  sideEffects  String?
+  active       Boolean         @default(true)
+  logs         MedicationLog[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  @@map("medications")
+}
+
+model MedicationLog {
+  id           String     @id @default(uuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  takenAt      DateTime   @default(now())
+  takenBy      String
+  notes        String?
+  createdAt    DateTime   @default(now())
+  
+  @@map("medication_logs")
+}
+
+// ============ KITCHEN & MEALS ============
+model FridgeItem {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  quantity       String?
+  unit           String?
+  category       String    // dairy, meat, produce, etc.
+  location       String    @default("fridge") // fridge, freezer, pantry
+  expirationDate DateTime?
+  imageUrl       String?
+  barcode        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  @@map("fridge_items")
+}
+
+model MealPlan {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  mealType    String   // breakfast, lunch, dinner, snack
+  recipeId    String?
+  recipe      Recipe?  @relation(fields: [recipeId], references: [id])
+  description String?
+  servings    Int?
+  notes       String?
+  prepared    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("meal_plans")
+}
+
+model Recipe {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  ingredients String[]
+  instructions String[]
+  prepTime    Int?        // minutes
+  cookTime    Int?        // minutes
+  servings    Int?
+  calories    Int?
+  protein     Float?
+  carbs       Float?
+  fat         Float?
+  fiber       Float?
+  imageUrl    String?
+  category    String?
+  cuisine     String?
+  tags        String[]
+  favorite    Boolean     @default(false)
+  mealPlans   MealPlan[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@map("recipes")
+}
+
+model CalorieLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  foodName  String
+  servings  Float    @default(1)
+  calories  Int
+  protein   Float?
+  carbs     Float?
+  fat       Float?
+  fiber     Float?
+  mealType  String?  // breakfast, lunch, dinner, snack
+  barcode   String?
+  createdAt DateTime @default(now())
+  
+  @@map("calorie_logs")
+}
+
+// ============ NOTES ============
+model Note {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  tags        String[]
+  pinned      Boolean  @default(false)
+  folder      String?
+  attachments String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("notes")
+}
+
+// ============ CHAT ============
+model ChatMessage {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message     String
+  attachments String[]
+  createdAt   DateTime @default(now())
+  
+  @@map("chat_messages")
+}
+
+// ============ EMAIL ============
+model EmailAccount {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String   // gmail, microsoft, icloud
+  email       String
+  accessToken String?
+  refreshToken String?
+  expiresAt   DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("email_accounts")
+}
+
+// ============ CALENDAR ============
+model CalendarAccount {
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String          // google, microsoft, apple
+  email        String
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  calendarId   String?         // External calendar ID
+  active       Boolean         @default(true)
+  events       CalendarEvent[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  @@map("calendar_accounts")
+}
+
+model CalendarEvent {
+  id          String          @id @default(uuid())
+  accountId   String
+  account     CalendarAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalId  String?         // ID from external calendar
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  attendees   String[]
+  reminder    Int?            // minutes before
+  recurring   Boolean         @default(false)
+  recurrence  String?         // RRULE or frequency
+  color       String?
+  category    String?
+  synced      Boolean         @default(false)
+  syncedAt    DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@map("calendar_events")
+}
