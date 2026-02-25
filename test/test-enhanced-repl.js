@@ -7,17 +7,17 @@ import { startProcess, readProcessOutput, forceTerminate, interactWithProcess } 
  * @returns {string} 'python3' or 'python'
  */
 function getPythonCommand() {
+  // Cross-platform detection: try calling the executables directly
   try {
-    // Prefer python3 if available
-    execSync('command -v python3', { stdio: 'ignore' });
+    execSync('python3 --version', { stdio: 'ignore' });
     return 'python3';
   } catch (e) {
-    // Fallback to python
     try {
-      execSync('command -v python', { stdio: 'ignore' });
+      execSync('python --version', { stdio: 'ignore' });
       return 'python';
-    } catch (error) {
-      throw new Error('Neither python3 nor python command is available in the PATH');
+    } catch (err) {
+      // No python available on PATH
+      return null;
     }
   }
 }
@@ -30,14 +30,21 @@ async function testEnhancedREPL() {
   console.log('Testing enhanced REPL functionality...');
   
   const pythonCommand = getPythonCommand();
+  if (!pythonCommand) {
+    console.log('Skipping enhanced REPL test: no python executable found in PATH');
+    // Considered a skip rather than a failure on systems without Python (e.g., some Windows setups)
+    return true;
+  }
   console.log(`Using python command: ${pythonCommand}`);
 
   // Start Python in interactive mode
   console.log('Starting Python REPL...');
+  // Use a shell only on POSIX systems; on Windows allow the startProcess default (COMSPEC)
+  const shellToUse = process.platform === 'win32' ? undefined : '/bin/bash';
   const result = await startProcess({
     command: `${pythonCommand} -i`,
     timeout_ms: 10000,
-    shell: '/bin/bash'
+    shell: shellToUse
   });
   
   console.log('Result from start_process:', result);
